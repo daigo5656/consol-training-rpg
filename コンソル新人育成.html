@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新人ディレクター育成RPG</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* 紙吹雪アニメーション */
+        @keyframes confetti {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .animate-confetti {
+            position: absolute;
+            animation: confetti linear forwards;
+        }
+
+        /* スクロールバー非表示 */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* 通知アニメーション */
+        @keyframes bounce-in {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            60% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .animate-bounce-in {
+            animation: bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+        }
+
+        /* レベルバッジのアニメーション */
+        .level-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: .2;
+            }
+
+            50% {
+                opacity: .5;
+            }
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-slate-50 text-slate-800 selection:bg-indigo-100">
+
+    <!-- 通知エリア -->
+    <div id="notification-area" class="fixed top-4 right-4 z-50 pointer-events-none"></div>
+
+    <!-- 紙吹雪エリア -->
+    <div id="confetti-container" class="fixed inset-0 pointer-events-none z-50 overflow-hidden"></div>
+
+    <!-- ヘッダー -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+
+                <!-- プレイヤー情報 -->
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <div
+                            class="w-16 h-16 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center text-white shadow-lg transform rotate-3">
+                            <span class="font-bold text-2xl">D</span>
+                        </div>
+                        <!-- レベルバッジ -->
+                        <div class="absolute -bottom-2 -right-2 w-12 h-12 flex items-center justify-center">
+                            <div class="absolute inset-0 bg-yellow-400 rounded-full opacity-20 level-pulse"></div>
+                            <div
+                                class="relative z-10 flex flex-col items-center justify-center w-10 h-10 bg-gradient-to-br from-yellow-300 to-amber-500 rounded-full shadow-lg border-2 border-white">
+                                <span class="text-[10px] font-bold text-amber-900 leading-none">LV</span>
+                                <span id="total-level" class="text-lg font-black text-white leading-none">1</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h1 class="text-xl font-bold text-slate-900">新人ディレクター</h1>
+                            <span
+                                class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-full border border-indigo-200">
+                                L1 基礎学習中
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-4 mt-1 text-sm text-slate-500">
+                            <span class="flex items-center gap-1"><i data-lucide="target" width="14"></i>
+                                コンテンツソリューション部</span>
+                            <span class="flex items-center gap-1"><i data-lucide="award" width="14"></i> クエスト達成: <span
+                                    id="completed-count">0</span>/<span id="total-count">0</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ステータスバー（PC用） -->
+                <div id="pc-status-bar"
+                    class="hidden md:flex gap-6 bg-slate-50 px-6 py-3 rounded-xl border border-slate-100">
+                    <!-- JSで生成 -->
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-8">
+
+        <!-- モバイル用ステータス（グリッド） -->
+        <div id="mobile-status-grid" class="md:hidden grid grid-cols-2 gap-3 mb-8">
+            <!-- JSで生成 -->
+        </div>
+
+        <!-- フィルタータブ -->
+        <div id="filter-tabs" class="flex overflow-x-auto pb-4 gap-2 mb-6 scrollbar-hide">
+            <!-- JSで生成 -->
+        </div>
+
+        <!-- クエストリスト -->
+        <div id="quest-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- JSで生成 -->
+        </div>
+    </main>
+
+    <script>
+        // --- データ定義 ---
+        const SKILL_DATA = [
+            // 1. ソリューション設計・企画力
+            {
+                id: 1,
+                category: "ソリューション設計・企画力",
+                subCategory: "顧客課題・ビジネスゴールのヒアリング・分析",
+                skillName: "ヒアリングスキル",
+                priority: "高",
+                objective: "顧客との打ち合わせに同席し、議事録の作成を手伝いながら、会話の内容を正確にメモできる。",
+                inputTask: "1. 議事録作成の基本マニュアルを熟読する。\n2. ビジネスヒアリングの基本的なマナーと流れを理解する。\n3. 会話の要点抽出方法に関する教材を学習する。",
+                practiceTask: "1. 2回以上の顧客打ち合わせに同席し、会話内容を正確にメモする。\n2. メモを基に議事録を作成し、上長から正確性のフィードバックを受ける（2回）。",
+                xp: 150
+            },
+            {
+                id: 2,
+                category: "ソリューション設計・企画力",
+                subCategory: "顧客課題・ビジネスゴールのヒアリング・分析",
+                skillName: "業界・企業理解",
+                priority: "高",
+                objective: "顧客の企業名と事業内容を正確に把握できる。",
+                inputTask: "1. 業界の分類方法（BtoB/BtoCなど）と企業調査の基本手順を学ぶ。\n2. 顧客の企業ウェブサイト、SNS、IR情報（公開されている場合）を確認する手順を習得する。",
+                practiceTask: "1. 担当する全顧客（最低5社）について、企業名と事業内容を正確にまとめたリストを作成し提出する。\n2. リストを基に、業界における顧客の立ち位置を口頭で上長に説明する。",
+                xp: 150
+            },
+            {
+                id: 3,
+                category: "ソリューション設計・企画力",
+                subCategory: "顧客課題・ビジネスゴールのヒアリング・分析",
+                skillName: "ゴール設定",
+                priority: "高",
+                objective: "顧客から伝えられた要望（例：「SNSのフォロワーを増やしたい」）を正確に記録できる。",
+                inputTask: "1. KGI、KPI、要望の違いの定義を学ぶ。\n2. 目標と指標の基本的な関連性に関する資料を学習する。",
+                practiceTask: "1. 3件以上のプロジェクトについて、顧客から伝えられた要望を正確に文書化し、上長に提出する。\n2. 記録した要望をKGI/KPIの視点で分類する練習を行う。",
+                xp: 150
+            },
+            {
+                id: 4,
+                category: "ソリューション設計・企画力",
+                subCategory: "市場・競合・トレンド調査・分析",
+                skillName: "調査手法",
+                priority: "小",
+                objective: "検索エンジンを使って指定されたキーワードの情報を収集できる。",
+                inputTask: "1. 検索エンジン（Googleなど）の高度な検索オプションを学ぶ。\n2. 検索ワードの適切な選び方、信頼できる情報源の判別方法を習得する。",
+                practiceTask: "1. 上長から指定されたキーワードで情報を収集し、情報源（URL）と収集日時を明記したリストを作成する（5回）。",
+                xp: 50
+            },
+            {
+                id: 5,
+                category: "ソリューション設計・企画力",
+                subCategory: "市場・競合・トレンド調査・分析",
+                skillName: "データ分析",
+                priority: "中",
+                objective: "上長が指定したデータを収集し、簡単な集計を行える。",
+                inputTask: "1. データの種類（定量/定性）と、収集・集計の基本的な手順を学ぶ。\n2. Excelやスプレッドシートの基本的な集計機能（SUM, AVERAGEなど）を習得する。",
+                practiceTask: "1. 上長が指定した元データ（例：視聴ログ）から、必要な数値を正確に抽出し、簡単な集計結果を提出する（3回）。",
+                xp: 100
+            },
+            {
+                id: 6,
+                category: "ソリューション設計・企画力",
+                subCategory: "市場・競合・トレンド調査・分析",
+                skillName: "トレンド把握",
+                priority: "中",
+                objective: "業界ニュースやSNSで話題になっているトレンドを把握できる。",
+                inputTask: "1. 業界ニュースサイト、主要なSNS、トレンドレポートの購読方法を学ぶ。\n2. トレンド情報の見つけ方、話題性の判断基準を習得する。",
+                practiceTask: "1. 担当業界の最新トレンドを週次で把握し、その中から重要なトレンドを3つ選定して上長に報告する（4週間）。",
+                xp: 100
+            },
+            {
+                id: 7,
+                category: "ソリューション設計・企画力",
+                subCategory: "ターゲット（ペルソナ）・カスタマージャーニー設定",
+                skillName: "ペルソナ作成",
+                priority: "高",
+                objective: "顧客の提示したペルソナ情報を正確に理解し、台本に反映できる。",
+                inputTask: "1. ペルソナの目的と構成要素を学ぶ。\n2. ペルソナ情報が企画や台本に与える影響に関するケーススタディを学習する。",
+                practiceTask: "1. 顧客から提供されたペルソナシートを基に、台本のどの箇所に影響するかを具体的に記述したレポートを作成する。",
+                xp: 150
+            },
+            {
+                id: 8,
+                category: "ソリューション設計・企画力",
+                subCategory: "ターゲット（ペルソナ）・カスタマージャーニー設定",
+                skillName: "カスタマージャーニーマップ作成",
+                priority: "中",
+                objective: "顧客の指示に従い、カスタマージャーニーマップの情報を整理できる。",
+                inputTask: "1. カスタマージャーニーマップの目的と構成要素、各フェーズの定義を学ぶ。\n2. マップ作成ツールの基本的な使い方を習得する。",
+                practiceTask: "1. 既存のプロジェクトについて、顧客の指示に従いジャーニーマップの情報を整理し、正確なマップの初稿を作成する。",
+                xp: 100
+            },
+            {
+                id: 9,
+                category: "ソリューション設計・企画力",
+                subCategory: "企画立案・コンセプト設計",
+                skillName: "発想力",
+                priority: "小",
+                objective: "上長が提示したアイデアに対して、意見を述べることができる。",
+                inputTask: "1. ブレインストーミングの基本的なルール、アイデアを構造化する手法を学ぶ。\n2. 建設的な意見（賛成、反対、追加提案）の述べ方を習得する。",
+                practiceTask: "1. チームのアイデア出し会議に3回参加し、上長が提示したアイデアに対して自身の意見を論理的に述べる。",
+                xp: 50
+            },
+            {
+                id: 10,
+                category: "ソリューション設計・企画力",
+                subCategory: "企画立案・コンセプト設計",
+                skillName: "論理的思考",
+                priority: "中",
+                objective: "企画書の構成要素（目的、ターゲットなど）を理解し、正確に記述できる。",
+                inputTask: "1. 企画書の基本構成要素（目的、ターゲット、コンセプトなど）の定義を学ぶ。\n2. 企画書のテンプレートを分析し、構成要素がどこに該当するかを理解する。",
+                practiceTask: "1. 既存の企画書の構成要素をすべてリストアップし、それぞれの項目を正確に定義した資料を作成する。",
+                xp: 100
+            },
+            {
+                id: 11,
+                category: "ソリューション設計・企画力",
+                subCategory: "企画立案・コンセプト設計",
+                skillName: "コンセプト構築",
+                priority: "高",
+                objective: "顧客の要望に沿って、コンセプトのキーワードをリストアップできる。",
+                inputTask: "1. コンセプトの定義、ターゲットに訴求するキーワードの選び方を学ぶ。\n2. 成功事例のコンセプトの分解演習を行う。",
+                practiceTask: "1. 顧客の要望書を基に、コンセプトに繋がりそうなキーワードを50個以上リストアップし、重要度順に並び替える。",
+                xp: 150
+            },
+            {
+                id: 12,
+                category: "ソリューション設計・企画力",
+                subCategory: "コンテンツマーケティング戦略の策定",
+                skillName: "チャネル選定",
+                priority: "高",
+                objective: "顧客が希望する配信チャネル（YouTube, Instagramなど）を正確に把握できる。",
+                inputTask: "1. 主要な配信チャネルの特性（ユーザー層、動画尺など）を学ぶ。\n2. 顧客のビジネスモデルに合うチャネルの選定基準を理解する。",
+                practiceTask: "1. 顧客のコンテンツ目的に対し、チャネルの特性を踏まえた選定理由を文書で説明する。",
+                xp: 150
+            },
+            {
+                id: 13,
+                category: "ソリューション設計・企画力",
+                subCategory: "コンテンツマーケティング戦略の策定",
+                skillName: "SEO/MEO/ASO",
+                priority: "小",
+                objective: "SEOやASOといった用語の意味を理解できる。",
+                inputTask: "1. SEO、ASOといった用語の意味と目的を学ぶ。\n2. 検索順位の仕組みの基礎に関する資料を学習する。",
+                practiceTask: "1. SEO/MEO/ASOの各用語について、自分の言葉で正確に定義し、その違いを説明するレポートを作成する。",
+                xp: 50
+            },
+            {
+                id: 14,
+                category: "ソリューション設計・企画力",
+                subCategory: "コンテンツマーケティング戦略の策定",
+                skillName: "広告運用",
+                priority: "小",
+                objective: "広告配信プラットフォームの基本画面を操作できる。",
+                inputTask: "1. 広告配信プラットフォームの役割、基本的な指標の定義を学ぶ。\n2. 配信プラットフォーム（例：Google Adsなど）の基本操作マニュアルを習得する。",
+                practiceTask: "1. デモアカウントで、広告キャンペーンの作成画面まで進み、基本設定を完了する演習を行う。",
+                xp: 50
+            },
+            {
+                id: 15,
+                category: "ソリューション設計・企画力",
+                subCategory: "KPI設定と効果測定",
+                skillName: "KPI設定",
+                priority: "中",
+                objective: "顧客から指定されたKPI（例：「視聴回数1万回」）を正確に記録できる。",
+                inputTask: "1. KPIの定義、KGIとの違い、目標を定量化する重要性を学ぶ。\n2. 目標設定シートのテンプレートを熟読する。",
+                practiceTask: "1. 3件以上のプロジェクトの目標について、顧客から指定されたKPIを目標設定シートに正確に記録し、上長の確認を受ける。",
+                xp: 100
+            },
+            {
+                id: 16,
+                category: "ソリューション設計・企画力",
+                subCategory: "KPI設定と効果測定",
+                skillName: "データ分析ツール活用",
+                priority: "小",
+                objective: "YouTube Analyticsなど、基本的な分析ツールの画面を確認できる。",
+                inputTask: "1. YouTube AnalyticsやGoogle Analyticsなど、基本的な分析ツールの画面構成と機能を学ぶ。\n2. 主要なレポートの場所と意味を理解する。",
+                practiceTask: "1. 各ツール（YouTube Analyticsなど）の基本画面のスクリーンショットを撮り、各機能の名称を正確に記述した資料を作成する。",
+                xp: 50
+            },
+            {
+                id: 17,
+                category: "ソリューション設計・企画力",
+                subCategory: "KPI設定と効果測定",
+                skillName: "レポーティング",
+                priority: "小",
+                objective: "データの羅列ではなく、グラフなどを用いて分かりやすく資料をまとめられる。",
+                inputTask: "1. データの羅列と分析結果の違い、グラフや図版を用いた視覚化の基本ルールを学ぶ。\n2. レポート作成の基本構成（結論→根拠）を習得する。",
+                practiceTask: "1. 上長から提供されたデータから、グラフを3種類作成し、分かりやすいタイトルを付けて提出する。",
+                xp: 50
+            },
+
+            // 2. クリエイティブ・制作スキル
+            {
+                id: 18,
+                category: "クリエイティブ・制作スキル",
+                subCategory: "構成表・絵コンテ作成",
+                skillName: "構成力",
+                priority: "高",
+                objective: "既存の台本や構成表に、修正箇所を正確に書き込める。",
+                inputTask: "1. 既存の台本や構成表を読む練習、修正指示の一般的な書き方を学ぶ。\n2. 映像制作における起承転結、フックの概念を理解する。",
+                practiceTask: "1. 過去の台本に対し、上長から口頭で指示された修正箇所を正確に書き込む演習を5回行う。",
+                xp: 150
+            },
+            {
+                id: 19,
+                category: "クリエイティブ・制作スキル",
+                subCategory: "構成表・絵コンテ作成",
+                skillName: "ビジュアライゼーション",
+                priority: "高",
+                objective: "顧客の指示に従い、簡単な絵コンテを清書できる。",
+                inputTask: "1. 絵コンテの役割、描画ツールの基本操作（PowerPoint, Keynoteなど）を学ぶ。\n2. 簡単な図形や矢印を用いた指示の出し方を習得する。",
+                practiceTask: "1. 顧客の指示（または上長の指示）に従い、簡単な絵コンテを清書し、画像として提出する演習を3回行う。",
+                xp: 150
+            },
+            {
+                id: 20,
+                category: "クリエイティブ・制作スキル",
+                subCategory: "構成表・絵コンテ作成",
+                skillName: "台本・ナレーション作成",
+                priority: "高",
+                objective: "既存の台本に修正箇所を正確に書き込める。",
+                inputTask: "1. 台本の構成要素（ト書き、ナレーションなど）、修正指示の書き方を学ぶ。\n2. 映像と音声の連動に関する基礎知識を習得する。",
+                practiceTask: "1. 既存の台本に対し、ナレーションの語尾や表現の修正箇所を正確に書き込む演習を5回行う。",
+                xp: 150
+            },
+            {
+                id: 21,
+                category: "クリエイティブ・制作スキル",
+                subCategory: "映像表現・演出手法の知識",
+                skillName: "映像文法",
+                priority: "中",
+                objective: "専門用語（例: \"バストショット\"、\"ロングショット\"）の意味を理解し、会話の中で使用できる。",
+                inputTask: "1. 映像制作の専門用語（カット、ショットなど）の定義と、それぞれの効果を学ぶ。\n2. 実際の作品を見て、用語が使われている場面を特定する練習を行う。",
+                practiceTask: "1. 専門用語を10個以上選定し、その定義と効果を説明するミニレポートを作成する。",
+                xp: 100
+            },
+            {
+                id: 22,
+                category: "クリエイティブ・制作スキル",
+                subCategory: "映像表現・演出手法の知識",
+                skillName: "演出提案",
+                priority: "中",
+                objective: "既存の作品を参考に、簡単な演出アイデアを提案できる。",
+                inputTask: "1. 既存の作品を分析し、演出の種類を分類する練習を行う。\n2. 演出アイデアを発想するための思考法を学ぶ。",
+                practiceTask: "1. 既存作品を5つ選定し、「このシーンに代わる簡単な演出アイデア」を1つずつ提案する。",
+                xp: 100
+            },
+            {
+                id: 23,
+                category: "クリエイティブ・制作スキル",
+                subCategory: "映像表現・演出手法の知識",
+                skillName: "音楽・効果音選定",
+                priority: "中",
+                objective: "既存のBGMライブラリから、指示された雰囲気の音楽を選べる。",
+                inputTask: "1. BGMライブラリの操作方法、音楽の「雰囲気」を表す用語を学ぶ。\n2. 音響効果と感情の関係性に関する基礎知識を習得する。",
+                practiceTask: "1. 上長から指示された雰囲気のBGMを3曲選定し、選定理由を文書で提出する演習を3回行う。",
+                xp: 100
+            },
+            {
+                id: 24,
+                category: "クリエイティブ・制作スキル",
+                subCategory: "ライティングスキル",
+                skillName: "コピーライティング",
+                priority: "小",
+                objective: "簡潔な言葉でメッセージを伝えることができる。",
+                inputTask: "1. 簡潔に書くことの重要性、ターゲットに合わせたトーン&マナーの基本を学ぶ。\n2. コピーライティングの成功事例を分析する。",
+                practiceTask: "1. 既存の長文テキストを「20文字以内」に要約する演習を10回行う。",
+                xp: 50
+            },
+            {
+                id: 25,
+                category: "クリエイティブ・制作スキル",
+                subCategory: "ライティングスキル",
+                skillName: "UXライティング",
+                priority: "小",
+                objective: "顧客の指示に従い、テロップやボタンのテキストを正確に記述できる。",
+                inputTask: "1. UXライティングの目的、テロップやボタンのテキストが持つ役割を学ぶ。\n2. ユーザーを迷わせない言葉選びの基本ルールを習得する。",
+                practiceTask: "1. 顧客の指示に従い、Webサイトのボタンやメッセージのテキストを正確に記述し、上長の確認を受ける。",
+                xp: 50
+            },
+            {
+                id: 26,
+                category: "クリエイティブ・制作スキル",
+                subCategory: "撮影・編集技術の理解",
+                skillName: "撮影指示",
+                priority: "中",
+                objective: "撮影現場で、監督の指示に従い、カメラアングルや構図を調整できる。",
+                inputTask: "1. カメラアングルや構図の基本、撮影現場での立ち居振る舞いを学ぶ。\n2. 撮影機材の基本操作に関するマニュアルを熟読する。",
+                practiceTask: "1. 撮影現場に同行し、監督の指示を正確に理解し、カメラアングルや構図を調整する演習を3回行う。",
+                xp: 100
+            },
+            {
+                id: 27,
+                category: "クリエイティブ・制作スキル",
+                subCategory: "撮影・編集技術の理解",
+                skillName: "編集指示",
+                priority: "中",
+                objective: "編集者から指示された部分の映像素材を正確に探せる。",
+                inputTask: "1. 映像素材のフォルダ構造、編集ソフトの基本画面と機能を学ぶ。\n2. 編集者からの指示（例: タイムコード）を正確に理解する方法を習得する。",
+                practiceTask: "1. 編集者からの指示に従い、特定のシーンや素材をフォルダ内から正確に探し出す演習を5回行う。",
+                xp: 100
+            },
+
+            // 3. 顧客折衝・コミュニケーション
+            {
+                id: 28,
+                category: "顧客折衝・コミュニケーション",
+                subCategory: "プレゼンテーション能力",
+                skillName: "資料作成",
+                priority: "中",
+                objective: "プレゼン資料の誤字脱字チェックや、指定された図版の挿入作業を行える。",
+                inputTask: "1. プレゼン資料の基本ルール（フォント、配色、レイアウト）を学ぶ。\n2. 誤字脱字チェックリストを作成する。",
+                practiceTask: "1. 上長が作成したプレゼン資料の誤字脱字チェックを完璧に行う（3回）。\n2. 指定された図版を正確に挿入し、レイアウトを整える演習を行う。",
+                xp: 100
+            },
+            {
+                id: 29,
+                category: "顧客折衝・コミュニケーション",
+                subCategory: "プレゼンテーション能力",
+                skillName: "説明力",
+                priority: "高",
+                objective: "プレゼン資料の内容を読み上げ、正確に伝えることができる。",
+                inputTask: "1. プレゼン資料の読み方、正しい発声と発音に関する資料を学習する。\n2. 落ち着いた話し方、ボディーランゲージの基本を習得する。",
+                practiceTask: "1. 上長の前でプレゼン資料の内容を正確に読み上げるロールプレイングを3回行う。",
+                xp: 150
+            },
+            {
+                id: 30,
+                category: "顧客折衝・コミュニケーション",
+                subCategory: "プレゼンテーション能力",
+                skillName: "質疑応答",
+                priority: "高",
+                objective: "顧客からの質問を正確にメモし、担当者へ報告できる。",
+                inputTask: "1. 顧客からの質問を正確にメモする方法、質問を分類する練習を行う。\n2. 想定問答集の作成方法を学ぶ。",
+                practiceTask: "1. 打ち合わせに同席し、顧客からの質問をすべてメモし、担当者へ正確に口頭報告する。",
+                xp: 150
+            },
+            {
+                id: 31,
+                category: "顧客折衝・コミュニケーション",
+                subCategory: "交渉・調整能力",
+                skillName: "要件整理",
+                priority: "高",
+                objective: "顧客の要望を正確にメモし、担当者へ報告できる。",
+                inputTask: "1. 顧客の要望を正確にメモする方法、メモの内容を分かりやすく整理する手法を学ぶ。\n2. 顧客の要望をMUST/WANTで分類する練習を行う。",
+                practiceTask: "1. 打ち合わせに同席し、顧客の要望をすべてメモし、担当者へ正確に文書で報告する。",
+                xp: 150
+            },
+            {
+                id: 32,
+                category: "顧客折衝・コミュニケーション",
+                subCategory: "交渉・調整能力",
+                skillName: "落とし所",
+                priority: "中",
+                objective: "顧客の要望と制作予算・スケジュールのバランスを考慮し、現実的な落とし所を提案できる。",
+                inputTask: "1. 制作における基本的な予算・スケジュール構成を学ぶ。\n2. 交渉の基本（MUST/WANT）を習得する。",
+                practiceTask: "1. 予算とスケジュールが逼迫したケースを想定し、現実的な落とし所を上長に提案する演習を行う。",
+                xp: 100
+            },
+            {
+                id: 33,
+                category: "顧客折衝・コミュニケーション",
+                subCategory: "フィードバックのヒアリング・理解",
+                skillName: "本質理解",
+                priority: "高",
+                objective: "顧客のフィードバックを正確に記録できる。",
+                inputTask: "1. フィードバックの正確な記録方法、フィードバックの意図を深掘りする傾聴技術を学ぶ。\n2. 感情コントロールの基礎を習得する。",
+                practiceTask: "1. 顧客からネガティブなFBを受けた際、フィードバック内容をすべて正確に記録し、上長へ報告する。",
+                xp: 150
+            },
+            {
+                id: 34,
+                category: "顧客折衝・コミュニケーション",
+                subCategory: "フィードバックのヒアリング・理解",
+                skillName: "建設的対話",
+                priority: "高",
+                objective: "顧客のフィードバックに対して、感謝の意を述べることができる。",
+                inputTask: "1. 顧客とのコミュニケーションにおける基本的なマナー、感謝の意を伝える重要性を学ぶ。\n2. ポジティブな言葉遣いの練習を行う。",
+                practiceTask: "1. 顧客のフィードバックに対し、感謝の意を述べると共に、次のアクションを簡潔に確認するロールプレイングを行う。",
+                xp: 150
+            },
+            {
+                id: 35,
+                category: "顧客折衝・コミュニケーション",
+                subCategory: "チーム内・社内連携",
+                skillName: "情報共有",
+                priority: "中",
+                objective: "顧客からの情報をチームメンバーに正確に共有できる。",
+                inputTask: "1. 顧客からの情報をチーム内で共有するためのツールと手順を学ぶ。\n2. 重要な情報をタイムリーに伝える重要性を理解する。",
+                practiceTask: "1. 顧客との連絡事項を指定されたツール（例：Slack, Teams）で正確に共有する演習を5回行う。",
+                xp: 100
+            },
+            {
+                id: 36,
+                category: "顧客折衝・コミュニケーション",
+                subCategory: "チーム内・社内連携",
+                skillName: "協力体制",
+                priority: "中",
+                objective: "他部署のメンバーと協力し、業務を円滑に進められる。",
+                inputTask: "1. 他部署のメンバーの役割と連絡先を把握する。\n2. 業務を依頼する際の基本的なマナーと依頼文書の書き方を学ぶ。",
+                practiceTask: "1. 他部署のメンバーに業務を円滑に依頼し、その後の進捗確認まで行う演習を3回行う。",
+                xp: 100
+            },
+
+            // 4. プロジェクトマネジメント・遂行力
+            {
+                id: 37,
+                category: "プロジェクトマネジメント・遂行力",
+                subCategory: "スケジュール・予算管理",
+                skillName: "計画立案",
+                priority: "中",
+                objective: "無理のない現実的なスケジュールと予算を立てることができる。",
+                inputTask: "1. スケジュールと予算の基本的な構成要素を学ぶ。\n2. 現実的な目標設定の重要性とタスクの見積もり方法を習得する。",
+                practiceTask: "1. 簡単な企画について、無理のない現実的なスケジュールと予算の初案を立てて提出する。",
+                xp: 100
+            },
+            {
+                id: 38,
+                category: "プロジェクトマネジメント・遂行力",
+                subCategory: "スケジュール・予算管理",
+                skillName: "進捗管理",
+                priority: "中",
+                objective: "タスクの進捗状況を常に把握し、報告できる。",
+                inputTask: "1. タスクの進捗状況を正確に把握する方法、報告のタイミングと内容を学ぶ。\n2. 進捗管理ツールの基本的な使い方を習得する。",
+                practiceTask: "1. 担当タスクの進捗状況を毎日正確に把握し、週次報告書に反映させる。",
+                xp: 100
+            },
+            {
+                id: 39,
+                category: "プロジェクトマネジメント・遂行力",
+                subCategory: "スケジュール・予算管理",
+                skillName: "リスク管理",
+                priority: "中",
+                objective: "潜在的な課題を事前に特定し、対策を講じることができる。",
+                inputTask: "1. プロジェクトにおける一般的なリスクの種類、リスクを事前に特定する方法を学ぶ。\n2. リスクの影響度と発生確率を評価する基本手法を習得する。",
+                practiceTask: "1. 担当プロジェクトのリスクを3つ以上特定し、上長から指示された対応策をマニュアル通りに講じる演習を行う。",
+                xp: 100
+            },
+            {
+                id: 40,
+                category: "プロジェクトマネジメント・遂行力",
+                subCategory: "品質管理・チェック",
+                skillName: "品質基準設定",
+                priority: "中",
+                objective: "成果物の品質に関する基準を明確にできる。",
+                inputTask: "1. 成果物の品質に関する基本的な基準、要件定義書と品質基準の関係を学ぶ。\n2. 品質基準を明確にするためのチェックリストの作り方を学ぶ。",
+                practiceTask: "1. 既存の要件定義書を基に、成果物の品質基準チェックリストを作成する。",
+                xp: 100
+            },
+            {
+                id: 41,
+                category: "プロジェクトマネジメント・遂行力",
+                subCategory: "品質管理・チェック",
+                skillName: "レビュー",
+                priority: "中",
+                objective: "制作物の最終確認を行い、ミスや不備をなくせる。",
+                inputTask: "1. 制作物の最終確認の重要性、ミスや不備をなくすためのチェックリストの作り方を学ぶ。\n2. レビューの基本手順を習得する。",
+                practiceTask: "1. 制作物の最終確認を行い、ミスや不備を指摘する演習を3回行う。",
+                xp: 100
+            },
+            {
+                id: 42,
+                category: "プロジェクトマネジメント・遂行力",
+                subCategory: "納品・公開プロセスの管理",
+                skillName: "納品形式",
+                priority: "小",
+                objective: "顧客の要望に合わせた最適な形式で納品できる。",
+                inputTask: "1. 納品形式の種類（mp4, Movなど）と、それぞれのメリット・デメリットを学ぶ。\n2. 顧客の配信環境（YouTube, Webサイトなど）に合わせた最適な形式を選ぶ基準を学ぶ。",
+                practiceTask: "1. 顧客の要望に合わせた最適な納品形式を提案し、その理由を説明する。",
+                xp: 50
+            },
+            {
+                id: 43,
+                category: "プロジェクトマネジメント・遂行力",
+                subCategory: "納品・公開プロセスの管理",
+                skillName: "公開支援",
+                priority: "中",
+                objective: "コンテンツの公開プロセスをサポートできる。",
+                inputTask: "1. コンテンツの公開プロセス、公開後のチェック項目を学ぶ。\n2. 配信プラットフォームへのアップロード手順を習得する。",
+                practiceTask: "1. コンテンツの公開プロセスをサポートし、公開後のチェック項目をすべて確認する。",
+                xp: 100
+            },
+            {
+                id: 44,
+                category: "プロジェクトマネジメント・遂行力",
+                subCategory: "プロジェクトの引継ぎ・ナレッジ共有",
+                skillName: "ドキュメント作成",
+                priority: "小",
+                objective: "プロジェクトの経緯や成果をドキュメントにまとめられる。",
+                inputTask: "1. プロジェクトの経緯や成果をドキュメントにまとめる方法、分かりやすい構成を学ぶ。\n2. ドキュメント作成ツールの基本的な操作を習得する。",
+                practiceTask: "1. 完了したプロジェクトを対象に、経緯や成果をドキュメントにまとめる。",
+                xp: 50
+            },
+            {
+                id: 45,
+                category: "プロジェクトマネジメント・遂行力",
+                subCategory: "プロジェクトの引継ぎ・ナレッジ共有",
+                skillName: "ノウハウ共有",
+                priority: "中",
+                objective: "自分の業務を通じて得た学びや気づきを、チームに共有できる。",
+                inputTask: "1. 業務を通じて得た学びを整理する方法、チームメンバーに共有するメリットを学ぶ。\n2. 成功・失敗事例の分析手法を学ぶ。",
+                practiceTask: "1. 自分の業務を通じて得た学びや気づきを、チームに共有する演習を3回行う。",
+                xp: 100
+            }
+        ];
+
+        const CATEGORIES = {
+            "ソリューション設計・企画力": {
+                color: "text-blue-500",
+                bgColor: "bg-blue-500",
+                bgLight: "bg-blue-50",
+                border: "border-blue-200",
+                icon: "brain-circuit",
+                description: "STRATEGY"
+            },
+            "クリエイティブ・制作スキル": {
+                color: "text-rose-500",
+                bgColor: "bg-rose-500",
+                bgLight: "bg-rose-50",
+                border: "border-rose-200",
+                icon: "zap",
+                description: "CREATIVITY"
+            },
+            "顧客折衝・コミュニケーション": {
+                color: "text-emerald-500",
+                bgColor: "bg-emerald-500",
+                bgLight: "bg-emerald-50",
+                border: "border-emerald-200",
+                icon: "users",
+                description: "CHARISMA"
+            },
+            "プロジェクトマネジメント・遂行力": {
+                color: "text-violet-500",
+                bgColor: "bg-violet-500",
+                bgLight: "bg-violet-50",
+                border: "border-violet-200",
+                icon: "shield-check",
+                description: "MANAGEMENT"
+            }
+        };
+
+        // --- 状態管理 ---
+        let completedSkills = []; // IDの配列
+        let selectedCategory = "ALL";
+
+        // --- 初期化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderAll();
+        });
+
+        // --- レンダリング系関数 ---
+
+        function renderAll() {
+            // 計算
+            const stats = calculateStats();
+            const totalLevel = Object.values(stats).reduce((sum, s) => sum + s.level, 0);
+
+            // ヘッダー更新
+            document.getElementById('total-level').textContent = totalLevel;
+            document.getElementById('completed-count').textContent = completedSkills.length;
+            document.getElementById('total-count').textContent = SKILL_DATA.length;
+
+            renderPCStatus(stats);
+            renderMobileStatus(stats);
+            renderFilters();
+            renderQuests();
+
+            // アイコン更新
+            lucide.createIcons();
+        }
+
+        function calculateStats() {
+            const stats = {};
+            for (const catName in CATEGORIES) {
+                const categorySkills = SKILL_DATA.filter(s => s.category === catName);
+                const totalXp = categorySkills.reduce((sum, s) => sum + s.xp, 0);
+                const earnedXp = categorySkills
+                    .filter(s => completedSkills.includes(s.id))
+                    .reduce((sum, s) => sum + s.xp, 0);
+
+                stats[catName] = {
+                    current: earnedXp,
+                    max: totalXp,
+                    level: Math.floor(earnedXp / 150) + 1,
+                    progress: Math.floor((earnedXp / totalXp) * 100) || 0
+                };
+            }
+            return stats;
+        }
+
+        function renderPCStatus(stats) {
+            const container = document.getElementById('pc-status-bar');
+            container.innerHTML = Object.entries(CATEGORIES).map(([catName, style]) => `
+                <div class="flex flex-col items-center w-24">
+                    <div class="text-xs font-bold ${style.color} mb-1 flex items-center gap-1">
+                        <i data-lucide="${style.icon}" width="12"></i>
+                        ${style.description}
+                    </div>
+                    <div class="text-2xl font-black text-slate-700 leading-none mb-1">
+                        ${stats[catName].current}
+                    </div>
+                    <div class="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                        <div class="h-full ${style.bgColor} transition-all duration-1000 ease-out" style="width: ${stats[catName].progress}%"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderMobileStatus(stats) {
+            const container = document.getElementById('mobile-status-grid');
+            container.innerHTML = Object.entries(CATEGORIES).map(([catName, style]) => `
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                    <div class="text-[10px] font-bold ${style.color} mb-1 flex items-center gap-1">
+                        <i data-lucide="${style.icon}" width="12"></i>
+                        ${style.description}
+                    </div>
+                    <div class="flex justify-between items-end mb-2">
+                        <span class="text-xl font-bold text-slate-800">${stats[catName].current}</span>
+                        <span class="text-xs text-slate-400">/ ${stats[catName].max} XP</span>
+                    </div>
+                    <div class="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                        <div class="h-full ${style.bgColor} transition-all duration-1000 ease-out" style="width: ${stats[catName].progress}%"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderFilters() {
+            const container = document.getElementById('filter-tabs');
+
+            // 全て表示ボタン
+            let html = `
+                <button onclick="setCategory('ALL')" class="flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${selectedCategory === 'ALL' ? 'bg-slate-800 text-white shadow-md' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'}">
+                    <i data-lucide="filter" width="14"></i>
+                    全て表示 (${SKILL_DATA.length})
+                </button>
+            `;
+
+            // 各カテゴリボタン
+            html += Object.entries(CATEGORIES).map(([catName, style]) => `
+                <button onclick="setCategory('${catName}')" class="flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2 ${selectedCategory === catName ? `${style.bgColor} text-white shadow-md` : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'}">
+                    <i data-lucide="${style.icon}" width="14"></i>
+                    ${catName.split("・")[0]}...
+                </button>
+            `).join('');
+
+            container.innerHTML = html;
+        }
+
+        function renderQuests() {
+            const container = document.getElementById('quest-grid');
+            const filteredSkills = selectedCategory === "ALL"
+                ? SKILL_DATA
+                : SKILL_DATA.filter(s => s.category === selectedCategory);
+
+            container.innerHTML = filteredSkills.map(skill => {
+                const isCompleted = completedSkills.includes(skill.id);
+                const style = CATEGORIES[skill.category];
+
+                // 優先度バッジ
+                let priorityBadge = '';
+                if (skill.priority === "高") {
+                    priorityBadge = `<div class="flex items-center text-amber-500 bg-amber-50 px-1.5 py-0.5 rounded text-[10px] font-bold border border-amber-100" title="優先度：高"><i data-lucide="star" width="12" class="mr-0.5 fill-current"></i> 高</div>`;
+                } else if (skill.priority === "中") {
+                    priorityBadge = `<div class="flex items-center text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded text-[10px] font-bold border border-slate-200" title="優先度：中">中</div>`;
+                } else {
+                    priorityBadge = `<div class="flex items-center text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded text-[10px] font-bold border border-slate-100" title="優先度：小">小</div>`;
+                }
+
+                // ボタン
+                let buttonHtml = '';
+                if (isCompleted) {
+                    buttonHtml = `
+                        <button disabled class="w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 bg-slate-200 text-slate-400 cursor-default">
+                            <i data-lucide="check-circle-2" width="18"></i> 達成済み
+                        </button>
+                    `;
+                } else {
+                    buttonHtml = `
+                        <button onclick="handleComplete(${skill.id})" class="w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all transform active:scale-95 ${style.bgColor} text-white shadow-lg hover:shadow-xl hover:brightness-110">
+                            <i data-lucide="sword" width="18"></i> クエスト完了
+                        </button>
+                    `;
+                }
+
+                return `
+                <div class="group relative bg-white rounded-2xl border-2 transition-all duration-300 flex flex-col overflow-hidden ${isCompleted ? 'border-slate-200 opacity-60 grayscale-[0.5]' : 'border-slate-100 hover:border-indigo-300 hover:shadow-xl hover:-translate-y-1'}">
+                    
+                    ${isCompleted ? `
+                    <div class="absolute inset-0 z-10 bg-white/50 flex items-center justify-center backdrop-blur-[1px]">
+                        <div class="bg-green-500 text-white px-4 py-2 rounded-full font-bold shadow-lg transform -rotate-12 border-4 border-white flex items-center gap-2">
+                            <i data-lucide="check-circle-2" width="20"></i> COMPLETED
+                        </div>
+                    </div>` : ''}
+
+                    <!-- カードヘッダー -->
+                    <div class="px-5 py-4 border-b border-slate-100 flex justify-between items-start bg-gradient-to-br ${isCompleted ? 'from-slate-50 to-slate-100' : 'from-white to-slate-50'}">
+                        <div>
+                            <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider mb-2 ${style.bgLight} ${style.color}">
+                                <i data-lucide="${style.icon}" width="10"></i>
+                                ${style.description}
+                            </div>
+                            <h3 class="font-bold text-lg text-slate-800 leading-tight group-hover:text-indigo-600 transition-colors">
+                                ${skill.skillName}
+                            </h3>
+                        </div>
+                        <div class="flex flex-col items-center gap-1">
+                            ${priorityBadge}
+                            <span class="text-[10px] font-bold text-slate-400">+${skill.xp}XP</span>
+                        </div>
+                    </div>
+
+                    <!-- カードボディ -->
+                    <div class="p-5 flex-grow space-y-4">
+                        <div class="text-xs text-slate-500 font-medium flex items-center gap-1">
+                            <div class="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+                            ${skill.subCategory}
+                        </div>
+
+                        <div class="space-y-3">
+                            <div class="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                <div class="flex items-center gap-2 text-xs font-bold text-slate-400 mb-1">
+                                    <i data-lucide="target" width="12"></i> クリア条件 (DO)
+                                </div>
+                                <p class="text-sm text-slate-700 leading-relaxed whitespace-pre-line">${skill.practiceTask}</p>
+                            </div>
+                            <div class="bg-indigo-50/50 p-3 rounded-lg border border-indigo-50 group-hover:bg-indigo-50 transition-colors">
+                                <div class="flex items-center gap-2 text-xs font-bold text-indigo-400 mb-1">
+                                    <i data-lucide="book-open" width="12"></i> ヒント (INPUT)
+                                </div>
+                                <p class="text-xs text-slate-600 leading-relaxed whitespace-pre-line">${skill.inputTask}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- フッター -->
+                    <div class="p-4 border-t border-slate-100 bg-slate-50/50">
+                        ${buttonHtml}
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        // --- アクション ---
+
+        function setCategory(cat) {
+            selectedCategory = cat;
+            renderFilters(); // タブの見た目更新
+            renderQuests();  // リスト更新
+            lucide.createIcons(); // 新しく描画された要素のアイコン初期化
+        }
+
+        function handleComplete(id) {
+            if (completedSkills.includes(id)) return;
+
+            // 状態更新
+            completedSkills.push(id);
+            const skill = SKILL_DATA.find(s => s.id === id);
+
+            // 通知表示
+            showNotification(skill);
+
+            // 紙吹雪
+            triggerConfetti();
+
+            // 再描画
+            renderAll();
+        }
+
+        function showNotification(skill) {
+            const container = document.getElementById('notification-area');
+            const catInfo = CATEGORIES[skill.category];
+
+            const notif = document.createElement('div');
+            notif.className = "animate-bounce-in bg-white border-l-4 border-yellow-400 shadow-xl rounded-r-lg p-4 flex items-center gap-3 pr-8 mb-3";
+            notif.innerHTML = `
+                <div class="bg-yellow-100 p-2 rounded-full text-yellow-600">
+                    <i data-lucide="trophy" width="20"></i>
+                </div>
+                <div>
+                    <p class="font-bold text-slate-800">LEVEL UP!</p>
+                    <p class="text-sm text-slate-600">クエスト完了！「${skill.skillName}」を習得！ ${catInfo.description} UP!</p>
+                </div>
+            `;
+
+            container.appendChild(notif);
+            lucide.createIcons(); // 通知内のアイコン初期化
+
+            // 3秒後に消す
+            setTimeout(() => {
+                notif.remove();
+            }, 3000);
+        }
+
+        function triggerConfetti() {
+            const container = document.getElementById('confetti-container');
+            const colors = ['#FFD700', '#FF6347', '#00BFFF', '#32CD32'];
+
+            for (let i = 0; i < 20; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'animate-confetti';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.top = '-10%';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.width = '10px';
+                confetti.style.height = '10px';
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                confetti.style.animationDuration = (1 + Math.random() * 2) + 's';
+
+                container.appendChild(confetti);
+
+                // アニメーション終了後に削除
+                setTimeout(() => {
+                    confetti.remove();
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "consol-training-rpg",
+  "version": "1.0.0",
+  "description": "新人ディレクター育成RPG - コンテンツソリューション部",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理画面 - 新人ディレクター育成RPG</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800">
+
+  <!-- ローディング -->
+  <div id="loading-screen" class="fixed inset-0 bg-white z-[100] flex items-center justify-center">
+    <div class="text-center">
+      <div class="w-16 h-16 bg-gradient-to-tr from-amber-400 to-orange-500 rounded-2xl flex items-center justify-center text-white shadow-xl mx-auto mb-4 animate-pulse">
+        <i data-lucide="settings" width="28"></i>
+      </div>
+      <p class="text-slate-500 text-sm">管理画面を読み込み中...</p>
+    </div>
+  </div>
+
+  <!-- ヘッダー -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-gradient-to-tr from-amber-400 to-orange-500 rounded-xl flex items-center justify-center text-white shadow">
+          <i data-lucide="settings" width="20"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-slate-800">管理画面</h1>
+          <p class="text-xs text-slate-400">新人ディレクター育成RPG</p>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <a href="/app.html" class="px-3 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-sm font-bold hover:bg-indigo-200 transition-all flex items-center gap-1">
+          <i data-lucide="arrow-left" width="14"></i> アプリに戻る
+        </a>
+        <button onclick="handleLogout()" class="px-3 py-2 bg-slate-100 text-slate-500 rounded-lg text-sm font-bold hover:bg-slate-200 transition-all flex items-center gap-1">
+          <i data-lucide="log-out" width="14"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8">
+    <!-- 統計サマリー -->
+    <div id="admin-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"></div>
+
+    <!-- ユーザー一覧 -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <i data-lucide="users" width="20" class="text-indigo-500"></i>
+          ユーザー一覧
+        </h2>
+        <div class="text-sm text-slate-400" id="user-count-label"></div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-slate-100 bg-slate-50">
+              <th class="text-left px-6 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider">ユーザー</th>
+              <th class="text-left px-6 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider">部署</th>
+              <th class="text-center px-6 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider">達成数</th>
+              <th class="text-center px-6 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider">XP</th>
+              <th class="text-center px-6 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider">進捗</th>
+              <th class="text-center px-6 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider">ロール</th>
+              <th class="text-center px-6 py-3 font-bold text-slate-500 text-xs uppercase tracking-wider">操作</th>
+            </tr>
+          </thead>
+          <tbody id="user-table-body" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ユーザー詳細モーダル -->
+    <div id="user-detail-modal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4" style="background:rgba(0,0,0,0.5);backdrop-filter:blur(4px)">
+      <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+        <div class="p-6 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white z-10">
+          <h3 id="detail-user-name" class="font-bold text-lg text-slate-800"></h3>
+          <button onclick="closeDetail()" class="p-2 hover:bg-slate-100 rounded-lg transition-all">
+            <i data-lucide="x" width="20"></i>
+          </button>
+        </div>
+        <div id="detail-content" class="p-6"></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/supabase-client.js"></script>
+  <script src="/js/skill-data.js"></script>
+  <script src="/js/admin.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>
