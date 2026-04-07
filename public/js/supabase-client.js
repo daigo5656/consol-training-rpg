@@ -8,7 +8,8 @@
 const SUPABASE_URL = 'https://ykiewzfcmoyzfpiyshla.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlraWV3emZjbW95emZwaXlzaGxhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1MzE0MDYsImV4cCI6MjA5MTEwNzQwNn0.ArAEJQ-oBnXYb0tbofJqEywOuQCx2JhUA_9kuGD0-PQ';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const { createClient } = window.supabase || window.Supabase || {};
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // 認証状態チェック
 async function getUser() {
